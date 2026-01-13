@@ -133,7 +133,7 @@ export function HeroSection() {
             {/* Spline Component */}
             <div className="relative w-full h-full rounded-3xl overflow-hidden">
               <Spline
-                scene="https://prod.spline.design/QJSswfsAeU9yV6rm/scene.splinecode"
+                scene="https://prod.spline.design/RDKATfS2PhDrjwuA/scene.splinecode"
                 className="w-full h-full"
               />
             </div>
