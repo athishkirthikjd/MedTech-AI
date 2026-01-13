@@ -9,6 +9,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
+import Chat from "./pages/Chat";
 import PatientDashboard from "./pages/patient/Dashboard";
 import Chatbot from "./pages/patient/Chatbot";
 import SymptomChecker from "./pages/patient/SymptomChecker";
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/chat" element={<Chat />} />
               <Route path="/patient/dashboard" element={<PatientDashboard />} />
               <Route path="/patient/chatbot" element={<Chatbot />} />
               <Route path="/patient/symptoms" element={<SymptomChecker />} />
