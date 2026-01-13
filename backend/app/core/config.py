@@ -76,12 +76,16 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30)
     
     # CORS Settings
-    cors_origins: str = Field(default="http://localhost:5173,http://localhost:3000")
+    cors_origins: str = Field(default="http://localhost:5173,http://localhost:3000,http://localhost:8000")
     
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string."""
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        # In production, add wildcard for same-origin requests
+        if self.is_production:
+            origins.append("*")
+        return origins
     
     # =========================================
     # Emergency Services

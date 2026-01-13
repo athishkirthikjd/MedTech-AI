@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: medtech-ai
+    runtime: python
+    buildCommand: ./build.sh
+    startCommand: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.7"
+      - key: NODE_VERSION
+        value: "20"
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_ALGORITHM
+        value: ES256
+    healthCheckPath: /health
+    autoDeploy: true

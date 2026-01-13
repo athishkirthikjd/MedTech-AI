@@ -33,3 +33,6 @@ structlog==24.1.0
 
 # Security
 passlib[bcrypt]==1.7.4
+
+# Static file serving (for Render deployment)
+aiofiles==23.2.1

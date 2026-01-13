@@ -123,6 +123,66 @@ Backend runs at `http://localhost:8000` with docs at `/docs`
 
 ---
 
+## ☁️ Render Deployment
+
+This project is configured for **one-click deployment** on Render as a single web service (frontend + backend together).
+
+### Deploy to Render
+
+1. **Connect Repository**
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Click "New" → "Web Service"
+   - Connect your GitHub repository
+
+2. **Configure Build Settings**
+   | Setting | Value |
+   |---------|-------|
+   | **Build Command** | `./build.sh` |
+   | **Start Command** | `cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+   | **Runtime** | Python 3 |
+
+3. **Set Environment Variables**
+   
+   Add these in Render Dashboard → Environment:
+   ```
+   ENVIRONMENT=production
+   DEBUG=false
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_KEY=your-anon-public-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   SUPABASE_JWT_SECRET={"kty":"EC",...}
+   DATABASE_URL=postgresql+asyncpg://...
+   GEMINI_API_KEY=your-gemini-api-key
+   JWT_ALGORITHM=ES256
+   ```
+
+4. **Deploy**
+   - Click "Create Web Service"
+   - Render will build frontend, install backend dependencies, and start the server
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────┐
+│                 Render Web Service              │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  ┌─────────────┐    ┌─────────────────────────┐ │
+│  │ React SPA   │◄───│ FastAPI serves static   │ │
+│  │ (dist/)     │    │ files + API endpoints   │ │
+│  └─────────────┘    └─────────────────────────┘ │
+│         │                      │                │
+│         ▼                      ▼                │
+│  ┌─────────────┐    ┌─────────────────────────┐ │
+│  │ /*, /login  │    │ /api/v1/*, /health      │ │
+│  │ /dashboard  │    │ /docs (dev only)        │ │
+│  └─────────────┘    └─────────────────────────┘ │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
 ## 🔧 Tech Stack
 
 ### Frontend

@@ -8,11 +8,31 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Proxy API requests to backend during development
+    proxy: mode === "development" ? {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    } : undefined,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    outDir: "dist",
+    sourcemap: false,
+    // Optimize chunks for production
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          ui: ["@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu", "@radix-ui/react-tabs"],
+        },
+      },
     },
   },
 }));

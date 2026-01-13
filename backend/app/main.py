@@ -5,12 +5,15 @@ FastAPI application entry point with lifespan management.
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.db.session import init_db, close_db
@@ -22,6 +25,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Static files directory (built React app)
+STATIC_DIR = Path(__file__).parent.parent / "static"
 
 
 @asynccontextmanager
@@ -92,7 +98,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -145,10 +151,10 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router)
 
 
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint with API information."""
+# API info endpoint (for debugging/verification)
+@app.get("/api")
+async def api_root():
+    """API root endpoint with information."""
     return {
         "name": settings.app_name,
         "version": "1.0.0",
@@ -165,6 +171,58 @@ async def health():
         "status": "healthy",
         "environment": settings.environment,
     }
+
+
+# ============================================
+# Static File Serving (React Frontend)
+# ============================================
+
+# Serve static assets (JS, CSS, images) if they exist
+if STATIC_DIR.exists():
+    # Mount assets directory for Vite build output
+    assets_dir = STATIC_DIR / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+    
+    # Serve other static files
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    
+    logger.info(f"Serving static files from: {STATIC_DIR}")
+
+
+# Catch-all route for React SPA (must be last!)
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """
+    Serve React SPA for all non-API routes.
+    
+    This enables client-side routing for the React frontend.
+    """
+    # Don't serve index.html for API routes
+    if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("redoc"):
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "Not found"}
+        )
+    
+    # Check if it's a static file request
+    static_file = STATIC_DIR / full_path
+    if static_file.exists() and static_file.is_file():
+        return FileResponse(static_file)
+    
+    # Serve index.html for SPA routing
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    
+    # Fallback if no frontend build exists (development mode)
+    return JSONResponse(
+        content={
+            "message": "MedTech AI API is running",
+            "docs": "/docs" if settings.debug else "API docs disabled in production",
+            "note": "Frontend not built. Run 'npm run build' to build the frontend."
+        }
+    )
 
 
 if __name__ == "__main__":
