@@ -8,11 +8,11 @@ import {
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
-import { StatCounter } from '@/components/ui/animated-counter';
+import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  upcomingAppointments, 
+  appointments, 
   prescriptions, 
   labReports, 
   vitalsHistory,
@@ -44,6 +44,15 @@ const quickActions = [
   { icon: Pill, label: 'Order Medicine', href: '/patient/pharmacy', color: 'bg-emerald-500' },
   { icon: FlaskConical, label: 'Book Lab Test', href: '/patient/lab-tests', color: 'bg-amber-500' },
 ];
+
+const patientStats = [
+  { label: 'Upcoming Appointments', value: dashboardStats.patient.upcomingAppointments, trend: 'up', change: '+1' },
+  { label: 'Active Prescriptions', value: dashboardStats.patient.activePrescriptions, trend: 'stable', change: 'No change' },
+  { label: 'Pending Lab Results', value: dashboardStats.patient.pendingLabResults, trend: 'down', change: '-2' },
+  { label: 'Wallet Balance', value: dashboardStats.patient.walletBalance, trend: 'up', change: '+$50', prefix: '$' },
+];
+
+const upcomingAppointments = appointments.filter(apt => apt.status === 'upcoming');
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -95,7 +104,7 @@ export default function PatientDashboard() {
 
           {/* Stats Row */}
           <div className="grid gap-4 md:grid-cols-4">
-            {dashboardStats.map((stat, index) => (
+            {patientStats.map((stat, index) => (
               <motion.div
                 key={stat.label}
                 initial={{ opacity: 0, y: 20 }}
@@ -106,8 +115,9 @@ export default function PatientDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">{stat.label}</p>
-                      <StatCounter 
+                      <AnimatedCounter 
                         value={stat.value} 
+                        prefix={stat.prefix}
                         className="text-2xl font-bold"
                       />
                     </div>
@@ -153,14 +163,14 @@ export default function PatientDashboard() {
                     <Activity className="h-4 w-4" />
                     <span className="text-xs">Blood Pressure</span>
                   </div>
-                  <p className="mt-1 text-xl font-bold">{latestVitals.bloodPressure}</p>
+                  <p className="mt-1 text-xl font-bold">{latestVitals.bloodPressure.systolic}/{latestVitals.bloodPressure.diastolic}</p>
                 </div>
                 <div className="rounded-lg bg-cyan-50 p-3 dark:bg-cyan-900/20">
                   <div className="flex items-center gap-2 text-cyan-600">
                     <Droplets className="h-4 w-4" />
                     <span className="text-xs">SpO₂</span>
                   </div>
-                  <p className="mt-1 text-xl font-bold">{latestVitals.spO2}<span className="text-sm font-normal">%</span></p>
+                  <p className="mt-1 text-xl font-bold">{latestVitals.spo2}<span className="text-sm font-normal">%</span></p>
                 </div>
                 <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
                   <div className="flex items-center gap-2 text-amber-600">
@@ -189,13 +199,13 @@ export default function PatientDashboard() {
                   >
                     <div className="flex items-center gap-3">
                       <img
-                        src={apt.doctorImage}
+                        src={apt.doctorAvatar}
                         alt={apt.doctorName}
                         className="h-10 w-10 rounded-full object-cover"
                       />
                       <div>
                         <p className="font-medium">{apt.doctorName}</p>
-                        <p className="text-sm text-muted-foreground">{apt.specialty}</p>
+                        <p className="text-sm text-muted-foreground">{apt.doctorSpecialty}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -262,16 +272,12 @@ export default function PatientDashboard() {
                         <Pill className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium">{rx.medication}</p>
-                        <p className="text-sm text-muted-foreground">{rx.dosage}</p>
+                        <p className="font-medium">{rx.medications[0]?.name || 'Medication'}</p>
+                        <p className="text-sm text-muted-foreground">{rx.medications[0]?.dosage || ''}</p>
                       </div>
                     </div>
-                    <span className={`rounded-full px-2 py-1 text-xs ${
-                      rx.status === 'active' 
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30' 
-                        : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {rx.status}
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700 dark:bg-emerald-900/30">
+                      Active
                     </span>
                   </div>
                 ))}

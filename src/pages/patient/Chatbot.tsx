@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PageTransition } from '@/components/ui/page-transition';
-import { chatMessages } from '@/lib/mock-data';
+import { chatMessages as initialMessages } from '@/lib/mock-data';
 
 interface Message {
   id: string;
@@ -37,7 +37,13 @@ const suggestedQuestions = [
 ];
 
 export default function Chatbot() {
-  const [messages, setMessages] = useState<Message[]>(chatMessages);
+  const [messages, setMessages] = useState<Message[]>(
+    initialMessages.map(msg => ({
+      ...msg,
+      role: msg.role as 'user' | 'assistant',
+      timestamp: new Date(msg.timestamp),
+    }))
+  );
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
