@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -6,6 +6,7 @@ import {
   Bot,
   User,
   Mic,
+  MicOff,
   Sparkles,
   ArrowRight,
   Calendar,
@@ -17,20 +18,35 @@ import {
   Zap,
   Shield,
   Clock,
+  Trash2,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { toast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  timestamp: Date;
-  actions?: { label: string; icon: React.ElementType; href: string }[];
+  timestamp: string;
 }
+
+interface StoredMessage extends Omit<Message, "actions"> {
+  actions?: { label: string; iconName: string; href: string }[];
+}
+
+const STORAGE_KEY = "medtech-chat-history";
+
+const iconMap: Record<string, React.ElementType> = {
+  Stethoscope,
+  Calendar,
+  Pill,
+  FlaskConical,
+};
 
 const suggestedQuestions = [
   { icon: Stethoscope, text: "What are common flu symptoms?" },
@@ -45,35 +61,136 @@ const features = [
   { icon: Clock, title: "24/7 Available", desc: "Always here to help" },
 ];
 
+const defaultMessage: StoredMessage = {
+  id: "1",
+  role: "assistant",
+  content: "Hello! I'm your MedTech AI health assistant. I can help you with symptoms, appointments, medications, and general health questions. How can I assist you today?",
+  timestamp: new Date().toISOString(),
+};
+
+// Extend Window interface for SpeechRecognition
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
 export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content: "Hello! I'm your MedTech AI health assistant. I can help you with symptoms, appointments, medications, and general health questions. How can I assist you today?",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<StoredMessage[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return [defaultMessage];
+      }
+    }
+    return [defaultMessage];
+  });
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
+  // Check for speech recognition support
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setSpeechSupported(true);
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = "en-US";
+
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join("");
+        setInput(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+        if (event.error === "not-allowed") {
+          toast({
+            title: "Microphone Access Denied",
+            description: "Please allow microphone access to use voice input.",
+            variant: "destructive",
+          });
+        }
+      };
+    }
+  }, []);
+
+  // Save messages to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const getAIResponse = (query: string): { content: string; actions?: Message["actions"] } => {
+  const toggleListening = useCallback(() => {
+    if (!speechSupported) {
+      toast({
+        title: "Voice Input Not Supported",
+        description: "Your browser does not support voice input. Please try Chrome or Edge.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+        toast({
+          title: "Listening...",
+          description: "Speak now. Click the mic button again to stop.",
+        });
+      } catch (error) {
+        console.error("Failed to start speech recognition:", error);
+      }
+    }
+  }, [isListening, speechSupported]);
+
+  const clearHistory = useCallback(() => {
+    setMessages([defaultMessage]);
+    localStorage.removeItem(STORAGE_KEY);
+    toast({
+      title: "Chat Cleared",
+      description: "Your conversation history has been cleared.",
+    });
+  }, []);
+
+  const getAIResponse = (query: string): { content: string; actions?: StoredMessage["actions"] } => {
     const lowerQuery = query.toLowerCase();
     
     if (lowerQuery.includes("symptom") || lowerQuery.includes("flu") || lowerQuery.includes("sick") || lowerQuery.includes("fever")) {
       return {
         content: "Common flu symptoms include fever, body aches, fatigue, cough, and sore throat. If you're experiencing severe symptoms like difficulty breathing or chest pain, please seek immediate medical attention. Would you like to use our Symptom Checker for a more detailed analysis?",
         actions: [
-          { label: "Check Symptoms", icon: Stethoscope, href: "/patient/symptoms" },
-          { label: "Book Doctor", icon: Calendar, href: "/patient/appointments" },
+          { label: "Check Symptoms", iconName: "Stethoscope", href: "/patient/symptoms" },
+          { label: "Book Doctor", iconName: "Calendar", href: "/patient/appointments" },
         ],
       };
     }
@@ -82,7 +199,7 @@ export default function Chat() {
       return {
         content: "I can help you book an appointment! We have specialists in Cardiology, Dermatology, Neurology, Pediatrics, and more. You can view available time slots and choose between in-person or video consultations.",
         actions: [
-          { label: "Book Appointment", icon: Calendar, href: "/patient/appointments" },
+          { label: "Book Appointment", iconName: "Calendar", href: "/patient/appointments" },
         ],
       };
     }
@@ -91,7 +208,7 @@ export default function Chat() {
       return {
         content: "Our online pharmacy offers a wide range of medications with prescription verification. You can refill existing prescriptions, order new medications, and get doorstep delivery. Always consult with your doctor before starting new medications.",
         actions: [
-          { label: "Visit Pharmacy", icon: Pill, href: "/patient/pharmacy" },
+          { label: "Visit Pharmacy", iconName: "Pill", href: "/patient/pharmacy" },
         ],
       };
     }
@@ -100,7 +217,7 @@ export default function Chat() {
       return {
         content: "We offer comprehensive lab testing services including blood work, hormone panels, allergy tests, and more. You can schedule home sample collection or visit our partner labs. Results are typically available within 24-48 hours.",
         actions: [
-          { label: "Book Lab Test", icon: FlaskConical, href: "/patient/appointments" },
+          { label: "Book Lab Test", iconName: "FlaskConical", href: "/patient/appointments" },
         ],
       };
     }
@@ -113,11 +230,17 @@ export default function Chat() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage: Message = {
+    // Stop listening if active
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    }
+
+    const userMessage: StoredMessage = {
       id: Date.now().toString(),
       role: "user",
       content: input,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -126,11 +249,11 @@ export default function Chat() {
 
     setTimeout(() => {
       const response = getAIResponse(input);
-      const aiMessage: Message = {
+      const aiMessage: StoredMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: response.content,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         actions: response.actions,
       };
       setMessages((prev) => [...prev, aiMessage]);
@@ -193,6 +316,15 @@ export default function Chat() {
             </motion.div>
           </Link>
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearHistory}
+              className="text-muted-foreground hover:text-destructive"
+              title="Clear chat history"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
             <ThemeToggle />
             <Link to="/register">
               <Button className="gap-2 bg-gradient-to-r from-primary to-secondary hover:opacity-90">
@@ -216,31 +348,39 @@ export default function Chat() {
             >
               {/* Chat Header */}
               <div className="p-4 border-b border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5">
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    animate={{
-                      boxShadow: [
-                        "0 0 20px hsl(var(--primary) / 0.3)",
-                        "0 0 40px hsl(var(--primary) / 0.5)",
-                        "0 0 20px hsl(var(--primary) / 0.3)",
-                      ],
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="relative h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center"
-                  >
-                    <Bot className="h-6 w-6 text-white" />
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-success border-2 border-card" />
-                  </motion.div>
-                  <div>
-                    <h1 className="font-semibold text-lg flex items-center gap-2">
-                      AI Health Assistant
-                      <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        Online
-                      </Badge>
-                    </h1>
-                    <p className="text-sm text-muted-foreground">Ask me anything about your health</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      animate={{
+                        boxShadow: [
+                          "0 0 20px hsl(var(--primary) / 0.3)",
+                          "0 0 40px hsl(var(--primary) / 0.5)",
+                          "0 0 20px hsl(var(--primary) / 0.3)",
+                        ],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="relative h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center"
+                    >
+                      <Bot className="h-6 w-6 text-white" />
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-success border-2 border-card" />
+                    </motion.div>
+                    <div>
+                      <h1 className="font-semibold text-lg flex items-center gap-2">
+                        AI Health Assistant
+                        <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          Online
+                        </Badge>
+                      </h1>
+                      <p className="text-sm text-muted-foreground">Ask me anything about your health</p>
+                    </div>
                   </div>
+                  {messages.length > 1 && (
+                    <Badge variant="secondary" className="gap-1">
+                      <History className="h-3 w-3" />
+                      {messages.length - 1} messages
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -290,22 +430,25 @@ export default function Chat() {
                                 transition={{ delay: 0.3 }}
                                 className="flex flex-wrap gap-2"
                               >
-                                {message.actions.map((action) => (
-                                  <Link key={action.href} to={action.href}>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-8 text-xs gap-1.5 hover:bg-primary hover:text-primary-foreground transition-all"
-                                    >
-                                      <action.icon className="h-3.5 w-3.5" />
-                                      {action.label}
-                                    </Button>
-                                  </Link>
-                                ))}
+                                {message.actions.map((action) => {
+                                  const IconComponent = iconMap[action.iconName] || Stethoscope;
+                                  return (
+                                    <Link key={action.href} to={action.href}>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs gap-1.5 hover:bg-primary hover:text-primary-foreground transition-all"
+                                      >
+                                        <IconComponent className="h-3.5 w-3.5" />
+                                        {action.label}
+                                      </Button>
+                                    </Link>
+                                  );
+                                })}
                               </motion.div>
                             )}
                             <p className="text-xs text-muted-foreground">
-                              {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>
                         </div>
@@ -345,22 +488,66 @@ export default function Chat() {
 
               {/* Input Area */}
               <div className="p-4 border-t border-border/50 bg-gradient-to-r from-background/80 to-background/80 backdrop-blur-xl">
+                {/* Listening indicator */}
+                <AnimatePresence>
+                  {isListening && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mb-3"
+                    >
+                      <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-primary/10 border border-primary/20">
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                          className="h-3 w-3 rounded-full bg-destructive"
+                        />
+                        <span className="text-sm text-primary font-medium">Listening... Speak now</span>
+                        <div className="flex gap-1 ml-2">
+                          {[0, 1, 2, 3, 4].map((i) => (
+                            <motion.div
+                              key={i}
+                              animate={{ height: [8, 20, 8] }}
+                              transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }}
+                              className="w-1 bg-primary rounded-full"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div className="flex items-center gap-3">
                   <Input
                     ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    placeholder="Ask me about symptoms, appointments, medications..."
+                    placeholder={isListening ? "Listening..." : "Ask me about symptoms, appointments, medications..."}
                     className="flex-1 h-12 rounded-xl border-border/50 bg-muted/50 focus-visible:ring-primary"
+                    disabled={isListening}
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-12 w-12 rounded-xl shrink-0 hover:bg-primary/10"
-                  >
-                    <Mic className="h-5 w-5" />
-                  </Button>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant={isListening ? "destructive" : "ghost"}
+                      size="icon"
+                      onClick={toggleListening}
+                      className={`h-12 w-12 rounded-xl shrink-0 ${
+                        isListening 
+                          ? "bg-destructive hover:bg-destructive/90" 
+                          : "hover:bg-primary/10"
+                      }`}
+                      title={isListening ? "Stop listening" : "Start voice input"}
+                    >
+                      {isListening ? (
+                        <MicOff className="h-5 w-5" />
+                      ) : (
+                        <Mic className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </motion.div>
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button
                       onClick={handleSend}
@@ -405,6 +592,22 @@ export default function Chat() {
                       <span className="text-sm">{item.text}</span>
                     </motion.button>
                   ))}
+                </div>
+              </div>
+
+              {/* Voice Input Info */}
+              <div className="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-xl p-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <Mic className="h-4 w-4 text-secondary" />
+                  Voice Input
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Click the microphone button to speak your questions hands-free.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="outline" className={speechSupported ? "text-success border-success/30" : "text-destructive border-destructive/30"}>
+                    {speechSupported ? "Supported" : "Not Supported"}
+                  </Badge>
                 </div>
               </div>
 
