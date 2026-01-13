@@ -25,8 +25,10 @@ cp -r dist/* backend/static/
 echo "🐍 Setting up Python backend..."
 cd backend
 
-echo "📦 Installing Python dependencies..."
-pip install --upgrade pip
-pip install -r requirements.txt
+echo "📦 Upgrading pip and installing dependencies..."
+pip install --upgrade pip wheel setuptools
+
+# Install dependencies with pre-built wheels (avoid Rust compilation)
+pip install -r requirements.txt --prefer-binary
 
 echo "✅ Build complete!"
