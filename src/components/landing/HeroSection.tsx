@@ -1,15 +1,8 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, Bot, Calendar, Pill, TestTube, FileText, Video, Sparkles } from "lucide-react";
+import { ArrowRight, Bot, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const floatingIcons = [
-  { icon: Calendar, delay: 0, x: -120, y: -80 },
-  { icon: Pill, delay: 0.2, x: 140, y: -60 },
-  { icon: TestTube, delay: 0.4, x: -100, y: 60 },
-  { icon: FileText, delay: 0.6, x: 130, y: 80 },
-  { icon: Video, delay: 0.8, x: 0, y: -120 },
-];
+import Spline from "@splinetool/react-spline";
 
 export function HeroSection() {
   return (
@@ -127,66 +120,22 @@ export function HeroSection() {
             </motion.div>
           </motion.div>
 
-          {/* Right Content - AI Bot Illustration */}
+          {/* Right Content - Spline 3D Scene */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative flex items-center justify-center"
+            className="relative flex items-center justify-center h-[400px] md:h-[500px] lg:h-[600px]"
           >
-            {/* Central AI Bot */}
-            <div className="relative">
-              {/* Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full blur-3xl opacity-20 scale-150" />
-              
-              {/* Main Circle */}
-              <motion.div
-                animate={{ 
-                  boxShadow: [
-                    "0 0 60px rgba(8, 145, 178, 0.3)",
-                    "0 0 100px rgba(8, 145, 178, 0.5)",
-                    "0 0 60px rgba(8, 145, 178, 0.3)",
-                  ]
-                }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="relative w-64 h-64 md:w-80 md:h-80 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center"
-              >
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-4 rounded-full border-2 border-white/20 border-dashed"
-                />
-                <Bot className="w-24 h-24 md:w-32 md:h-32 text-white" />
-              </motion.div>
-
-              {/* Floating Icons */}
-              {floatingIcons.map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ 
-                    opacity: 1, 
-                    scale: 1,
-                    y: [0, -10, 0],
-                  }}
-                  transition={{
-                    delay: item.delay + 0.5,
-                    y: {
-                      duration: 3,
-                      repeat: Infinity,
-                      delay: item.delay,
-                    }
-                  }}
-                  style={{
-                    position: "absolute",
-                    left: `calc(50% + ${item.x}px)`,
-                    top: `calc(50% + ${item.y}px)`,
-                  }}
-                  className="w-14 h-14 rounded-2xl bg-card shadow-lg border border-border flex items-center justify-center"
-                >
-                  <item.icon className="w-6 h-6 text-primary" />
-                </motion.div>
-              ))}
+            {/* Glow Effect Behind Spline */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-3xl blur-3xl opacity-50" />
+            
+            {/* Spline Component */}
+            <div className="relative w-full h-full rounded-3xl overflow-hidden">
+              <Spline
+                scene="https://prod.spline.design/QJSswfsAeU9yV6rm/scene.splinecode"
+                className="w-full h-full"
+              />
             </div>
           </motion.div>
         </div>
