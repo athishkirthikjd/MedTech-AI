@@ -25,10 +25,11 @@ export default function Appointments() {
   const [viewMonth, setViewMonth] = useState(currentDate.getMonth());
   const [viewYear, setViewYear] = useState(currentDate.getFullYear());
 
-  const filteredDoctors = doctors.filter((doctor) => {
+const filteredDoctors = doctors.filter((doctor) => {
     const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          doctor.specialty.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = !selectedDepartment || doctor.department === selectedDepartment;
+    const matchesDepartment = !selectedDepartment || doctor.department === selectedDepartment || 
+                              departments.find(d => d.id === selectedDepartment)?.name === doctor.specialty;
     return matchesSearch && matchesDepartment;
   });
 
@@ -129,7 +130,7 @@ export default function Appointments() {
                 <GlassCard hover className="p-4">
                   <div className="flex gap-4">
                     <img
-                      src={doctor.image}
+                      src={doctor.avatar}
                       alt={doctor.name}
                       className="h-20 w-20 rounded-xl object-cover"
                     />
@@ -140,23 +141,23 @@ export default function Appointments() {
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                         <span>{doctor.rating}</span>
                         <span>•</span>
-                        <span>{doctor.experience}</span>
+                        <span>{doctor.experience} yrs</span>
                       </div>
                       <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                         <MapPin className="h-3 w-3" />
-                        <span>{doctor.location}</span>
+                        <span>{doctor.hospital}</span>
                       </div>
                     </div>
                   </div>
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex gap-2">
-                      {doctor.availableSlots.includes('video') && (
+                      {doctor.availableSlots?.includes('video') && (
                         <Badge variant="secondary" className="gap-1">
                           <Video className="h-3 w-3" />
                           Video
                         </Badge>
                       )}
-                      {doctor.availableSlots.includes('clinic') && (
+                      {doctor.availableSlots?.includes('clinic') && (
                         <Badge variant="secondary">In-Clinic</Badge>
                       )}
                     </div>
@@ -184,14 +185,14 @@ export default function Appointments() {
                   {/* Doctor Info */}
                   <div className="flex items-center gap-4 rounded-lg bg-muted p-4">
                     <img
-                      src={selectedDoctor.image}
+                      src={selectedDoctor.avatar}
                       alt={selectedDoctor.name}
                       className="h-16 w-16 rounded-xl object-cover"
                     />
                     <div>
                       <h3 className="font-semibold">{selectedDoctor.name}</h3>
                       <p className="text-sm text-primary">{selectedDoctor.specialty}</p>
-                      <p className="text-sm text-muted-foreground">{selectedDoctor.location}</p>
+                      <p className="text-sm text-muted-foreground">{selectedDoctor.hospital}</p>
                     </div>
                   </div>
 
@@ -272,22 +273,26 @@ export default function Appointments() {
                     >
                       <h4 className="mb-3 font-medium">Select Time</h4>
                       <div className="grid grid-cols-4 gap-2 md:grid-cols-6">
-                        {timeSlots.map((slot) => (
-                          <button
-                            key={slot.time}
-                            disabled={!slot.available}
-                            onClick={() => setSelectedSlot(slot.time)}
-                            className={`rounded-lg border p-2 text-sm transition-colors ${
-                              selectedSlot === slot.time
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : slot.available
-                                ? 'border-border hover:border-primary'
-                                : 'cursor-not-allowed border-border bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {slot.time}
-                          </button>
-                        ))}
+                        {timeSlots.map((slot, index) => {
+                          // Simulate some slots being unavailable
+                          const isAvailable = index % 3 !== 0;
+                          return (
+                            <button
+                              key={slot}
+                              disabled={!isAvailable}
+                              onClick={() => setSelectedSlot(slot)}
+                              className={`rounded-lg border p-2 text-sm transition-colors ${
+                                selectedSlot === slot
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : isAvailable
+                                  ? 'border-border hover:border-primary'
+                                  : 'cursor-not-allowed border-border bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {slot}
+                            </button>
+                          );
+                        })}
                       </div>
                     </motion.div>
                   )}
