@@ -9,6 +9,15 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
+import PatientDashboard from "./pages/patient/Dashboard";
+import Chatbot from "./pages/patient/Chatbot";
+import SymptomChecker from "./pages/patient/SymptomChecker";
+import Appointments from "./pages/patient/Appointments";
+import Consultation from "./pages/patient/Consultation";
+import Pharmacy from "./pages/patient/Pharmacy";
+import HealthVitals from "./pages/patient/HealthVitals";
+import DoctorDashboard from "./pages/doctor/Dashboard";
+import AdminDashboard from "./pages/admin/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +33,15 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/patient/dashboard" element={<PatientDashboard />} />
+              <Route path="/patient/chatbot" element={<Chatbot />} />
+              <Route path="/patient/symptoms" element={<SymptomChecker />} />
+              <Route path="/patient/appointments" element={<Appointments />} />
+              <Route path="/patient/consultation" element={<Consultation />} />
+              <Route path="/patient/pharmacy" element={<Pharmacy />} />
+              <Route path="/patient/vitals" element={<HealthVitals />} />
+              <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
