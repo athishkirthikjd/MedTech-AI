@@ -18,7 +18,7 @@ from app.core.security import (
     UserRole,
     security_service,
 )
-from app.db.session import async_session_factory
+from app.db.session import get_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     Note:
         Session is automatically closed after the request.
     """
-    async with async_session_factory() as session:
+    factory = get_session_factory()
+    async with factory() as session:
         try:
             yield session
         except Exception:

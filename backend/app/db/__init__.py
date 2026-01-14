@@ -1,15 +1,10 @@
 """
 MedTech AI Backend - Database Module
-"""
 
-from app.db.base import Base, TimestampMixin, UUIDMixin, SoftDeleteMixin
-from app.db.session import (
-    async_engine,
-    async_session_factory,
-    get_session,
-    init_db,
-    close_db,
-)
+Note: Import components directly from submodules:
+    from app.db.base import Base
+    from app.db.session import get_session, init_db
+"""
 
 __all__ = [
     "Base",

@@ -106,6 +106,13 @@ class AvailableSlotsRequest(BaseModel):
     date: date
 
 
+class TimeSlot(BaseModel):
+    """A single time slot."""
+    start_time: time
+    end_time: time
+    is_available: bool = True
+
+
 class AvailableSlotsResponse(BaseModel):
     """Response with available time slots."""
     doctor_id: str

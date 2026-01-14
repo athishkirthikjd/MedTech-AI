@@ -5,7 +5,7 @@ Async SQLAlchemy session factory and engine configuration.
 """
 
 import logging
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -18,6 +18,10 @@ from sqlalchemy.pool import NullPool
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Global engine and session factory (lazy initialized)
+_async_engine: Optional[AsyncEngine] = None
+_async_session_factory: Optional[async_sessionmaker[AsyncSession]] = None
 
 
 def create_engine() -> AsyncEngine:
@@ -41,17 +45,37 @@ def create_engine() -> AsyncEngine:
     return engine
 
 
-# Create the async engine
-async_engine = create_engine()
+def get_engine() -> AsyncEngine:
+    """Get or create the async engine."""
+    global _async_engine
+    if _async_engine is None:
+        _async_engine = create_engine()
+    return _async_engine
 
-# Create async session factory
-async_session_factory = async_sessionmaker(
-    bind=async_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
+
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Get or create the session factory."""
+    global _async_session_factory
+    if _async_session_factory is None:
+        _async_session_factory = async_sessionmaker(
+            bind=get_engine(),
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
+    return _async_session_factory
+
+
+# Aliases for backward compatibility
+@property
+def async_engine() -> AsyncEngine:
+    return get_engine()
+
+
+@property
+def async_session_factory() -> async_sessionmaker[AsyncSession]:
+    return get_session_factory()
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -62,7 +86,8 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         async with get_session() as session:
             result = await session.execute(...)
     """
-    async with async_session_factory() as session:
+    factory = get_session_factory()
+    async with factory() as session:
         try:
             yield session
             await session.commit()
@@ -81,7 +106,8 @@ async def init_db() -> None:
     """
     from app.db.base import Base
     
-    async with async_engine.begin() as conn:
+    engine = get_engine()
+    async with engine.begin() as conn:
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
     
@@ -90,5 +116,8 @@ async def init_db() -> None:
 
 async def close_db() -> None:
     """Close database connections on shutdown."""
-    await async_engine.dispose()
+    global _async_engine
+    if _async_engine is not None:
+        await _async_engine.dispose()
+        _async_engine = None
     logger.info("Database connections closed")

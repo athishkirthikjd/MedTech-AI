@@ -2,6 +2,7 @@
 MedTech AI Backend - Application Package
 """
 
-from app.main import app
+# Note: app is imported at runtime to avoid circular imports
+# Use: from app.main import app
 
-__all__ = ["app"]
+__version__ = "1.0.0"
