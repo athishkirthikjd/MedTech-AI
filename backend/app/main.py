@@ -42,22 +42,32 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
     
-    # Initialize database
-    await init_db()
-    logger.info("Database connection established")
+    # Initialize database (with error handling for resilient startup)
+    try:
+        await init_db()
+        logger.info("Database connection established")
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        logger.warning("App will start but database features won't work")
     
     # Initialize AI services
-    from app.services.ai.gemini_client import gemini_client
-    if gemini_client.is_available:
-        logger.info(f"Gemini AI initialized: {settings.gemini_model}")
-    else:
-        logger.warning("Gemini AI not available - check API key")
+    try:
+        from app.services.ai.gemini_client import gemini_client
+        if gemini_client.is_available:
+            logger.info(f"Gemini AI initialized: {settings.gemini_model}")
+        else:
+            logger.warning("Gemini AI not available - check API key")
+    except Exception as e:
+        logger.error(f"AI service initialization failed: {e}")
     
     yield
     
     # Shutdown
     logger.info("Shutting down MedTech AI Backend...")
-    await close_db()
+    try:
+        await close_db()
+    except Exception:
+        pass
     logger.info("Database connection closed")
 
 
